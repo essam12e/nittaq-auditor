@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nittaq-auditor/observation/v1",
+  "title": "nittaq-auditor observation (schema_version 1)",
+  "description": "What was actually observed on a storefront (and optionally read from dashboards). Validated at runtime by core/discovery/observation.py:validate_observation. Record only what was seen.",
+  "type": "object",
+  "required": ["schema_version", "store_url", "adapter", "capabilities"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "store_url": {"type": "string"},
+    "collected_at": {"type": "string", "description": "ISO-8601 UTC. Verification observations must be collected after the last recorded change."},
+    "adapter": {"type": "string", "examples": ["playwright", "static-http", "claude:playwright-mcp", "claude:claude-in-chrome", "codex:playwright-mcp", "computer-use"]},
+    "capabilities": {
+      "type": "object",
+      "required": ["javascript", "network_capture", "interaction"],
+      "properties": {
+        "javascript": {"type": "boolean"},
+        "network_capture": {"type": "boolean", "description": "true only if request URLs AND bodies were captured"},
+        "interaction": {"type": "boolean"}
+      }
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["url"],
+        "properties": {
+          "url": {"type": "string"},
+          "step": {"enum": ["home", "view_item", "add_to_cart", "view_cart", "begin_checkout", "add_payment_info", "purchase", "other"]},
+          "status": {"enum": ["ok", "error", "auth_required", "captcha", "two_factor", "blocked", "timeout", "user_action_required"]},
+          "page_load_id": {"type": "integer"},
+          "html": {"type": "string", "description": "optional page HTML (scanned for IDs, JSON-LD product data, Salla markers)"},
+          "datalayer": {"type": "array", "items": {"type": "object"}},
+          "datalayer_read": {"type": "boolean"},
+          "error": {"type": "string"}
+        }
+      }
+    },
+    "requests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["url"],
+        "properties": {
+          "url": {"type": "string"},
+          "method": {"type": "string"},
+          "post_data": {"type": ["string", "null"]},
+          "page_url": {"type": "string"},
+          "step": {"type": "string"},
+          "page_load_id": {"type": "integer"}
+        }
+      }
+    },
+    "captured_events": {
+      "description": "Events the agent saw through a platform tool (e.g. Pixel Helper, Tag Assistant) when raw requests are not available. Weaker than network evidence: never enough for CONNECTED_VERIFIED on its own.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["platform", "name", "evidence_note"],
+        "properties": {
+          "platform": {"enum": ["ga4", "google_ads", "meta", "tiktok", "snapchat"]},
+          "name": {"type": "string"},
+          "tracking_id": {"type": "string"},
+          "params": {"type": "object"},
+          "page_url": {"type": "string"},
+          "step": {"type": "string"},
+          "evidence_note": {"type": "string"}
+        }
+      }
+    },
+    "flow": {
+      "type": "object",
+      "properties": {
+        "attempted": {"type": "array", "items": {"type": "string"}},
+        "completed": {"type": "array", "items": {"type": "string"}},
+        "blocked": {
+          "type": "object",
+          "additionalProperties": {"enum": ["auth_required", "customer_login", "captcha", "not_found", "financial_transaction", "timeout", "error", "not_attempted"]}
+        }
+      }
+    },
+    "dashboards": {
+      "type": "object",
+      "description": "Read-only facts from official dashboards. Every entry has status: ok | auth_required | permission_denied | captcha | two_factor | multiple_accounts | unexpected_ui | no_account.",
+      "properties": {
+        "gtm": {
+          "type": "object",
+          "properties": {
+            "status": {"type": "string"},
+            "container_id": {"type": "string"},
+            "workspace_changes": {"type": "integer", "description": "number of unpublished workspace changes shown"},
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string"}, "type": {"type": "string"}, "paused": {"type": "boolean"},
+                  "measurement_id": {"type": "string"}, "send_to": {"type": "string"}, "pixel_id": {"type": "string"},
+                  "event_name": {"type": "string"}, "firing_triggers": {"type": "array", "items": {"type": "string"}}
+                }
+              }
+            }
+          }
+        },
+        "google_ads": {
+          "type": "object",
+          "properties": {
+            "status": {"type": "string"},
+            "conversion_actions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string"}, "category": {"type": "string"}, "primary": {"type": "boolean"},
+                  "value_setting": {"enum": ["static", "dynamic", "none"]}, "conversion_id": {"type": "string"}, "label": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "meta": {"type": "object", "properties": {"status": {"type": "string"}, "conversions_api_active": {"type": "boolean"}}},
+        "tiktok": {"type": "object", "properties": {"status": {"type": "string"}, "test_events_confirmed": {"type": "boolean"}}},
+        "snapchat": {"type": "object", "properties": {"status": {"type": "string"}, "test_events_confirmed": {"type": "boolean"}}},
+        "merchant": {
+          "type": "object",
+          "properties": {
+            "status": {"type": "string"},
+            "account_id": {"type": "string"},
+            "website_url": {"type": "string"},
+            "website_claimed": {"type": "boolean"},
+            "account_issues": {"type": "array", "items": {"type": "object"}},
+            "data_sources": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string"}, "status": {"type": "string"}, "last_fetch_errors": {"type": "integer"}}}},
+            "products": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "offer_id": {"type": "string"}, "status": {"type": "string"}, "price": {"type": "string"},
+                  "availability": {"type": "string"}, "link": {"type": "string"},
+                  "issues": {"type": "array", "items": {"type": "object", "properties": {"code": {"type": "string"}, "description": {"type": "string"}, "attribute": {"type": "string"}}}}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "store_facts": {
+      "type": "object",
+      "properties": {
+        "currency": {"type": "string", "description": "store currency as configured/shown (never assumed)"},
+        "currency_source": {"type": "string"},
+        "platform": {"const": "salla"}
+      }
+    },
+    "notes": {"type": "array", "items": {"type": "string"}}
+  }
+}

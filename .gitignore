@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.nittaq/
+.mypy_cache/
+.ruff_cache/
+nittaq-report-*.html
