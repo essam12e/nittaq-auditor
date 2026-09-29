@@ -1,69 +1,102 @@
+<div dir="rtl">
+
 # مدقق نطاق — nittaq-auditor
 
-A safety-first AI skill that **audits, diagnoses, and (only with explicit approval) connects, repairs and
-verifies** analytics and advertising tracking on **Salla (سلة)** stores. The whole end-user experience is
-Arabic. It runs in agent environments that support `SKILL.md` skills: Claude Code is the primary target, and
-Codex is designed to be supported.
+مهارة (Skill) للذكاء الاصطناعي تُعطي الأولوية للأمان. **تفحص** ربط خدمات التحليلات والإعلانات في متاجر **سلة** **وتشخّص** مشاكلها، **وتربط وتُصلح وتتحقق** — لكن فقط بعد موافقة صريحة منك. كل ما يراه المستخدم باللغة العربية. البيئة الأساسية المستهدفة هي Claude Code، ومصممة لتدعم Codex أيضًا.
 
-Services: Google Analytics 4 · Google Tag Manager · Google Ads conversions · Meta Pixel · TikTok Pixel ·
-Snapchat Pixel · Google Merchant Center (a separate, last stage with two approvals).
+الخدمات المدعومة: Google Analytics 4 · Google Tag Manager · Google Ads · Meta Pixel · TikTok Pixel · Snapchat Pixel · Google Merchant Center (مرحلة منفصلة وأخيرة بموافقتين).
 
 ---
 
-## What it does
+## طريقة تثبيت المهارة
 
-```
-STORE → DISCOVERY → AUDIT → DIAGNOSIS → ARABIC REPORT → USER APPROVAL → EXECUTION → VERIFICATION → RE-AUDIT → (MERCHANT) → FINAL REPORT
-```
+### المتطلبات
+- Python بإصدار 3.10 أو أحدث (المهارة لا تحتاج أي مكتبات خارجية للعمل).
+- اختياري: مكتبة Playwright مع متصفح Chromium، لفحص المتجر داخل متصفح حقيقي.
+- اختياري: أداة متصفح متصلة بالوكيل (مثل Playwright MCP أو Claude in Chrome) لفتح لوحات التحكم وتنفيذ التعديلات المعتمدة.
 
-- **Read-only by default (AUDIT_ONLY).** It inspects the storefront (and dashboards, when a browser with the
-  user's own logins is available), decodes the real tracking requests, and classifies every service into one of
-  12 explicit states. Examples: `NOT_CONNECTED`, `DETECTED`, `CONNECTED_VERIFIED`, `DUPLICATE_EVENTS`,
-  `UNABLE_TO_VERIFY`.
-- **An ID is never proof.** A `G-…`, `GTM-…`, pixel ID, or conversion action existing gets you `DETECTED` at
-  most. `CONNECTED_VERIFIED` requires decoded runtime hits for the funnel steps actually exercised, with no
-  issues.
-- **Every finding has evidence** and is labelled *observed fact*, *inference*, *unverified*, or *needs manual
-  check*.
-- **Proposals, not actions.** Problems and missing integrations become numbered proposals (`P1…`). Nothing
-  changes until the user approves those exact proposals. Destructive ones also need `أؤكد P#`.
-- **Write gate.** Before any save or publish, the engine checks all of these:
-  - the workflow state;
-  - the approval scope;
-  - the separate Merchant approval (for Merchant changes);
-  - the destructive-action confirmation;
-  - the official platform host;
-  - the account/property/container ID (wrong-account protection).
+### التثبيت في Claude Code
 
-  Each authorization is a single-use token.
-- **Verification after every change**, using a *fresh* observation. "Saved" never becomes "verified".
-- **Merchant Center** runs last and needs two approvals: one to inspect, and a separate one to modify. Reports
-  say where each fix really belongs (often Salla product data, not Merchant settings).
+**1) مهارة شخصية (متاحة في كل مشاريعك):**
 
-## Installation
-
-Requirements: Python ≥ 3.10. The runtime uses only the standard library. Optional: Python Playwright plus a
-Chromium build for in-process browser audits.
-
-### Claude Code
 ```bash
-# personal skill
-git clone <this repo> ~/.claude/skills/nittaq-auditor
-# or project skill
-git clone <this repo> .claude/skills/nittaq-auditor
-# optional in-process browser
-pip install playwright && python -m playwright install chromium   # or set NITTAQ_CHROMIUM_PATH
+git clone https://github.com/essam12e/nittaq-auditor.git ~/.claude/skills/nittaq-auditor
 ```
-Claude loads `SKILL.md` automatically. Invoke it by writing **مدقق نطاق**.
 
-For dashboard work (GTM, Google Ads, Events Managers, Merchant Center), give Claude a browser tool such as the
-Playwright MCP server or Claude in Chrome. You log in yourself; the skill never handles credentials.
+**2) أو مهارة خاصة بمشروع معيّن (من داخل مجلد المشروع):**
 
-### Codex (designed to support — not tested)
-Copy or clone the folder into the Codex skills directory (for example `~/.codex/skills/nittaq-auditor`).
-Optionally configure a Playwright MCP server for Codex, and use `--agent-browser codex:playwright-mcp`.
+```bash
+git clone https://github.com/essam12e/nittaq-auditor.git .claude/skills/nittaq-auditor
+```
 
-## Usage
+**3) اختياري — تثبيت المتصفح لفحص المتجر فعليًا:**
+
+```bash
+pip install playwright
+python -m playwright install chromium
+# أو إن كان Chromium مثبتًا مسبقًا:
+export NITTAQ_CHROMIUM_PATH=/path/to/chromium
+```
+
+**4) التأكد من التثبيت:**
+
+```bash
+python3 ~/.claude/skills/nittaq-auditor/scripts/nittaq.py welcome
+```
+
+يجب أن تظهر رسالة الترحيب العربية. بعد ذلك افتح Claude Code (أو أعد تشغيله) واكتب:
+
+```
+مدقق نطاق
+```
+
+يحمّل Claude ملف `SKILL.md` تلقائيًا ويبدأ المهارة.
+
+**5) التحديث لاحقًا:**
+
+```bash
+cd ~/.claude/skills/nittaq-auditor && git pull
+```
+
+### التثبيت في Codex (مصمم للدعم — لم يُختبر)
+
+انسخ المجلد إلى مجلد مهارات Codex:
+
+```bash
+git clone https://github.com/essam12e/nittaq-auditor.git ~/.codex/skills/nittaq-auditor
+```
+
+ويمكن اختياريًا إعداد خادم Playwright MCP لـ Codex، ثم استخدام `--agent-browser codex:playwright-mcp`.
+
+### لأعمال لوحات التحكم
+
+لفتح GTM وGoogle Ads وEvents Manager وMerchant Center وتنفيذ التعديلات المعتمدة، يحتاج Claude إلى أداة متصفح مثل خادم Playwright MCP أو Claude in Chrome. أنت من يسجّل الدخول بنفسه؛ المهارة لا تطلب كلمات المرور ولا تتعامل معها.
+
+---
+
+## ماذا تفعل المهارة
+
+```
+المتجر ← الاكتشاف ← الفحص ← التشخيص ← التقرير العربي ← موافقة المستخدم ← التنفيذ ← التحقق ← إعادة الفحص ← (Merchant) ← التقرير النهائي
+```
+
+- **الفحص فقط افتراضيًا (AUDIT_ONLY).** تفحص المتجر (ولوحات التحكم عند توفر متصفح بجلسات دخولك)، وتقرأ طلبات التتبع الفعلية المرسلة، وتصنّف كل خدمة في واحدة من 12 حالة صريحة، مثل: `NOT_CONNECTED` و`DETECTED` و`CONNECTED_VERIFIED` و`DUPLICATE_EVENTS` و`UNABLE_TO_VERIFY`.
+- **وجود المعرّف ليس دليلًا.** وجود `G-…` أو `GTM-…` أو معرّف بيكسل أو إجراء تحويل يعطي في أحسن الأحوال `DETECTED`. أما `CONNECTED_VERIFIED` فيتطلب رصد طلبات فعلية أثناء التشغيل لخطوات الشراء التي تم تنفيذها، دون مشاكل.
+- **لكل ملاحظة دليل**، ومصنّفة إلى: *ملاحظة مؤكدة*، أو *استنتاج*، أو *تعذر التحقق*، أو *يحتاج تحققًا يدويًا*.
+- **مقترحات لا إجراءات.** المشاكل والخدمات غير المربوطة تتحول إلى مقترحات مرقّمة (`P1…`). لا يتغير شيء حتى توافق على هذه المقترحات بعينها. والمقترحات التي تتضمن إيقافًا أو إزالة تحتاج تأكيدًا إضافيًا `أؤكد P#`.
+- **بوابة الكتابة.** قبل أي حفظ أو نشر يتحقق المحرك من:
+  - مرحلة سير العمل؛
+  - نطاق الموافقة؛
+  - الموافقة المنفصلة لـ Merchant (لتعديلات Merchant)؛
+  - تأكيد الإجراءات الحساسة؛
+  - أن الصفحة المفتوحة على موقع المنصة الرسمي؛
+  - أن الحساب أو المعرّف هو نفسه الذي تم فحصه (الحماية من الحساب الخطأ).
+
+  وكل تصريح بالتنفيذ يُستخدم مرة واحدة فقط.
+- **تحقق بعد كل تغيير** باستخدام بيانات فحص *جديدة*. «تم الحفظ» لا يتحول أبدًا إلى «تم التحقق».
+- **Merchant Center** آخر مرحلة، وتحتاج موافقتين: واحدة للفحص، وأخرى منفصلة للتعديل. ويوضح التقرير أين يجب الإصلاح فعلًا (غالبًا في بيانات المنتج داخل سلة، لا في إعدادات Merchant).
+
+## الاستخدام
 
 ```
 مدقق نطاق
@@ -73,132 +106,114 @@ Optionally configure a Playwright MCP server for Codex, and use `--agent-browser
 مدقق نطاق تأكد من الربط
 ```
 
-Normally the user only sends the trigger, then the store URL, then approves or rejects clearly described
-actions. The agent drives the engine through `scripts/nittaq.py` (see `SKILL.md`). Each command prints JSON
-with an Arabic `text` field that the agent shows verbatim:
+عادةً يرسل المستخدم كلمة التشغيل، ثم رابط المتجر، ثم يوافق أو يرفض إجراءات موصوفة بوضوح. يشغّل الوكيل المحرك عبر `scripts/nittaq.py` (راجع `SKILL.md`). كل أمر يطبع JSON يحتوي على حقل `text` بالعربية يعرضه الوكيل كما هو:
 
-| Command | Purpose |
+| الأمر | الغرض |
 |---|---|
-| `welcome`, `start --text` | invocation, session creation |
-| `detect --agent-browser X` | honest capability detection (Chromium is actually launched) |
-| `plan` / `ingest` | agent-browser collection plan → validated observation |
-| `collect [--adapter static]` | in-process Playwright flow, or markup-only fallback |
-| `reply --text` | approvals, refusals, destructive confirmation, Merchant questions |
-| `pause` / `resume` / `fail` | login, 2FA, CAPTCHA, multiple accounts, unexpected UI, safe stop |
-| `authorize` / `record-change` | gated writes with a change record |
-| `verify-begin`, `ingest --kind verify` | post-change verification and re-audit |
-| `report --format text\|json\|html` | Arabic report (HTML is RTL and uses the bundled Tajawal font) |
+| `welcome` و`start --text` | التشغيل وإنشاء الجلسة |
+| `detect --agent-browser X` | كشف صادق لإمكانيات المتصفح (يتم تشغيل Chromium فعليًا للتأكد) |
+| `plan` / `ingest` | خطة جمع البيانات بمتصفح الوكيل ← بيانات فحص يتم التحقق من صحتها |
+| `collect [--adapter static]` | فحص المتجر بـ Playwright داخليًا، أو قراءة الكود فقط كبديل |
+| `reply --text` | الموافقات والرفض وتأكيد الإجراءات الحساسة وأسئلة Merchant |
+| `pause` / `resume` / `fail` | تسجيل الدخول، التحقق الثنائي، CAPTCHA، تعدد الحسابات، واجهة غير متوقعة، التوقف الآمن |
+| `authorize` / `record-change` | تعديلات عبر البوابة مع سجل للتغيير |
+| `verify-begin` و`ingest --kind verify` | التحقق بعد التغيير وإعادة الفحص |
+| `report --format text\|json\|html` | تقرير عربي (نسخة HTML من اليمين لليسار وبخط Tajawal المرفق) |
 
-## Browser requirements
+## متطلبات المتصفح
 
-| Environment | What is possible |
+| البيئة | ما يمكن تنفيذه |
 |---|---|
-| Agent browser with network capture (for example Playwright MCP) | full storefront audit plus read-only dashboards plus approved changes |
-| In-process Playwright + Chromium (`collect`) | full storefront audit (no dashboards, no changes) |
-| Screenshot-only computer use | observations, but no network capture, so never `CONNECTED_VERIFIED` |
-| Nothing (`--adapter static`) | markup only, so at most `DETECTED`; the user is told this plainly |
+| متصفح الوكيل مع رصد الشبكة (مثل Playwright MCP) | فحص كامل للمتجر + قراءة لوحات التحكم + تنفيذ التغييرات المعتمدة |
+| Playwright + Chromium داخليًا (`collect`) | فحص كامل للمتجر (بدون لوحات تحكم وبدون تعديلات) |
+| تحكم بالحاسوب عبر لقطات الشاشة فقط | ملاحظات، لكن دون رصد الشبكة، فلا يصل أبدًا إلى `CONNECTED_VERIFIED` |
+| لا شيء (`--adapter static`) | قراءة الكود فقط، فالحد الأقصى `DETECTED`، ويُبلَّغ المستخدم بذلك بوضوح |
 
-The storefront flow goes home → one product → add to cart once → cart → click checkout once. It stops at any
-login, OTP or CAPTCHA wall. It **refuses to click** payment or confirm-order controls, and has no API for
-typing into fields.
+مسار الفحص: الصفحة الرئيسية ← منتج واحد ← إضافة للسلة مرة واحدة ← السلة ← الضغط على إتمام الطلب مرة واحدة. يتوقف عند أي تسجيل دخول أو رمز تحقق أو CAPTCHA. **يرفض الضغط** على أزرار الدفع أو تأكيد الطلب، ولا يملك أي وظيفة للكتابة داخل الحقول.
 
-## Security model
+## نموذج الأمان
 
-- It never asks for, accepts, types, stores or logs passwords, OTPs, 2FA codes or cookies. You finish logins
-  yourself, and the session resumes at the same point.
-- Observations are redacted before they are saved: secret-looking keys, cookies, auth headers, bearer tokens
-  and JWTs are removed. Session files are `0600` and stored under `$NITTAQ_HOME` (default `./.nittaq`).
-- The static fetcher refuses private and loopback addresses (SSRF guard). It also refuses store URLs that
-  contain credentials.
-- It does not bypass CAPTCHA, MFA or platform security. It never changes account security settings.
-- It never places orders or payments to test tracking.
+- لا يطلب ولا يقبل ولا يكتب ولا يخزّن ولا يسجّل كلمات المرور أو رموز التحقق أو رموز التحقق الثنائي أو ملفات الارتباط (Cookies). أنت تكمل تسجيل الدخول بنفسك، وتُستأنف الجلسة من نفس النقطة.
+- تُحذف البيانات السرية من بيانات الفحص قبل حفظها: المفاتيح التي تبدو سرية، وملفات الارتباط، وترويسات المصادقة، ورموز Bearer وJWT. ملفات الجلسات بصلاحية `0600` وتُحفظ في `$NITTAQ_HOME` (الافتراضي `./.nittaq`).
+- القارئ الثابت يرفض العناوين الداخلية والمحلية (حماية SSRF)، ويرفض روابط المتاجر التي تحتوي على بيانات دخول.
+- لا يتجاوز CAPTCHA أو التحقق متعدد العوامل أو أي حماية للمنصة، ولا يغيّر إعدادات أمان الحسابات.
+- لا ينشئ طلبات شراء أو عمليات دفع لاختبار التتبع.
 
-## Approval model
+## نموذج الموافقة
 
-| Level | Allowed |
+| المستوى | المسموح |
 |---|---|
-| OBSERVE | open pages, inspect storefront, network, tags and dashboards, detect duplicates, report |
-| PROPOSE | explain problem, impact, fix, and exactly what would change; ask |
-| EXECUTE | only approved proposals, only in state `EXECUTING`, only after `authorize`; then verify |
+| الملاحظة (OBSERVE) | فتح الصفحات، فحص المتجر والشبكة والوسوم ولوحات التحكم، اكتشاف التكرار، إعداد التقارير |
+| الاقتراح (PROPOSE) | شرح المشكلة وأثرها والإصلاح وما سيتغير بالضبط، ثم السؤال |
+| التنفيذ (EXECUTE) | المقترحات المعتمدة فقط، في حالة `EXECUTING` فقط، وبعد `authorize` فقط؛ ثم التحقق |
 
-Approval scope is tracked in an in-task ledger:
-- "موافق على GA4" does not approve Meta.
-- A tracking approval never approves Merchant.
-- Merchant inspection approval never approves Merchant modification.
-- Unclear replies such as "ربما" or "جوجل تمام" lead to a clarification question, never execution.
+يُتتبع نطاق الموافقة في سجل موافقات أثناء المهمة:
+- «موافق على GA4» لا تعني الموافقة على Meta.
+- موافقة التتبع لا تعني أبدًا الموافقة على Merchant.
+- موافقة فحص Merchant لا تعني أبدًا الموافقة على تعديله.
+- الردود غير الواضحة مثل «ربما» أو «جوجل تمام» تؤدي إلى سؤال توضيحي، لا إلى التنفيذ.
 
-## Testing
+## الاختبارات
 
 ```bash
-scripts/run_tests.sh                       # knowledge + structure checks, ruff/mypy if installed, all tests
-NITTAQ_SKIP_BROWSER=1 scripts/run_tests.sh # skip real-browser tests
+scripts/run_tests.sh                       # فحص المعرفة والبنية، وruff/mypy إن وُجدا، وكل الاختبارات
+NITTAQ_SKIP_BROWSER=1 scripts/run_tests.sh # تخطي اختبارات المتصفح الحقيقي
 ```
 
-What is covered:
-- the full scenario matrix for GA4, GTM, Google Ads, Meta, TikTok, Snapchat and Merchant;
-- cross-platform duplicate detection;
-- approval scoping and ambiguity handling;
-- the write gate (wrong account, wrong page, destructive, Merchant);
-- state-machine invariants, including stale verification evidence and failed or unable-to-verify outcomes;
-- the false-success guard and Arabic template validation;
-- redaction and file permissions;
-- browser-unavailable behaviour;
-- the static fallback and the CLI.
+ما تغطيه الاختبارات:
+- مصفوفة السيناريوهات كاملة لـ GA4 وGTM وGoogle Ads وMeta وTikTok وSnapchat وMerchant؛
+- اكتشاف التكرار بين المنصات؛
+- نطاق الموافقات والتعامل مع الردود غير الواضحة؛
+- بوابة الكتابة (الحساب الخطأ، الصفحة الخطأ، الإجراءات الحساسة، Merchant)؛
+- ثوابت آلة الحالات، بما فيها بيانات التحقق القديمة ونتائج «فشل التحقق» و«تعذر التحقق»؛
+- الحماية من ادعاء النجاح الكاذب والتحقق من القوالب العربية؛
+- حذف البيانات السرية وصلاحيات الملفات؛
+- السلوك عند عدم توفر متصفح؛
+- البديل الثابت وواجهة سطر الأوامر.
 
-**Real-browser integration tests** run Chromium via Playwright against a *local fake Salla-like store*
-(`tests/fixtures/fake_store.py`), with every third-party host intercepted. They prove the adapter, flow, decoder
-and validators work together, and that payment buttons are never clicked. **They do not prove anything about
-real Salla stores or real platform endpoints.**
+**اختبارات التكامل بمتصفح حقيقي** تشغّل Chromium عبر Playwright على *متجر تجريبي محلي يشبه متاجر سلة* (`tests/fixtures/fake_store.py`)، مع اعتراض كل المواقع الخارجية. تُثبت أن المحوّل ومسار الفحص وفك الطلبات والمدققات تعمل معًا، وأن أزرار الدفع لا يتم الضغط عليها أبدًا. **لكنها لا تُثبت شيئًا عن متاجر سلة الحقيقية أو خوادم المنصات الحقيقية.**
 
-## Tested vs designed to support
+## ما تم اختباره وما صُمم لدعمه
 
-| Area | Status |
+| الجزء | الحالة |
 |---|---|
-| Engine, validators, approval, gate, verification, reports (unit + scenario tests) | **Tested** |
-| In-process Playwright adapter + storefront flow (local fake store, real Chromium) | **Tested** |
-| Static HTTP fallback (local server) | **Tested** |
-| CLI end-to-end (subprocess) | **Tested** |
-| Live Salla stores | **Not live-tested.** The build sandbox had no approved target store |
-| Real GA4 / Ads / Meta / TikTok / Snap endpoints and dashboards | **Not live-tested.** Sandbox network policy, no accounts |
-| Claude relay adapters (Playwright MCP, Claude in Chrome), computer use | **Designed to support.** No such tool was attached during the build |
-| Codex | **Designed to support.** Not tested |
-| TikTok / Snapchat payload decoding | **Best effort.** Formats are not publicly specified; `UNPARSED` otherwise, and verification needs the platform's test-events view |
+| المحرك والمدققات والموافقة والبوابة والتحقق والتقارير (اختبارات الوحدات والسيناريوهات) | **تم اختباره** |
+| محوّل Playwright الداخلي ومسار فحص المتجر (متجر تجريبي محلي، Chromium حقيقي) | **تم اختباره** |
+| البديل الثابت عبر HTTP (خادم محلي) | **تم اختباره** |
+| واجهة سطر الأوامر من البداية للنهاية | **تم اختباره** |
+| متاجر سلة الحقيقية | **لم يُختبر فعليًا.** لم يكن هناك متجر معتمد للاختبار في بيئة البناء |
+| خوادم ولوحات GA4 وAds وMeta وTikTok وSnap الحقيقية | **لم يُختبر فعليًا.** قيود شبكة بيئة البناء، ولا توجد حسابات |
+| محوّلات متصفح Claude (Playwright MCP وClaude in Chrome) والتحكم بالحاسوب | **مصمم للدعم.** لم تكن هذه الأدوات متاحة أثناء البناء |
+| Codex | **مصمم للدعم.** لم يُختبر |
+| قراءة طلبات TikTok وSnapchat | **قراءة تقريبية.** صيغتها غير موثقة رسميًا؛ تظهر `UNPARSED` عند التعذر، ويتطلب التحقق شاشة اختبار الأحداث في المنصة |
 
-## Updating platform knowledge
+## تحديث معرفة المنصات
 
-Requirements live in `knowledge/rules.json` (source URLs, check date, requirement level, confidence,
-validators) and in short notes under `knowledge/`. The manifest is `knowledge/SOURCES.md`, generated by
-`scripts/check_knowledge.py`. The review process is in `knowledge/REVIEW_PROCESS.md`.
+المتطلبات محفوظة في `knowledge/rules.json` (روابط المصادر، تاريخ المراجعة، مستوى المتطلب، درجة التأكيد، المدققات المستخدمة) وفي ملاحظات مختصرة داخل `knowledge/`. قائمة المصادر في `knowledge/SOURCES.md` ويولّدها `scripts/check_knowledge.py`. طريقة المراجعة موضحة في `knowledge/REVIEW_PROCESS.md`.
 
-Rules marked `unconfirmed` only produce "needs manual check" findings. At build time (2026-09-29), direct
-fetches of the official documentation sites were blocked by the sandbox. Rules were therefore checked against
-web-search excerpts of the official pages, and each rule records that.
+القواعد المصنفة `unconfirmed` تنتج فقط ملاحظات «يحتاج تحققًا يدويًا». وقت البناء (2026-09-29) كان الوصول المباشر لمواقع التوثيق الرسمية محجوبًا في بيئة البناء، لذلك رُوجعت القواعد من مقتطفات نتائج البحث للصفحات الرسمية، وكل قاعدة توثّق ذلك.
 
-## Troubleshooting
+## حل المشاكل
 
-| Symptom | Cause / action |
+| المشكلة | السبب / الحل |
 |---|---|
-| Everything is `DETECTED` / `UNABLE_TO_VERIFY` | Static fallback was used. Install Playwright + Chromium, or give the agent a browser tool |
-| `begin_checkout` untested (`customer_login`) | The store requires shopper OTP login. Log in yourself, then re-run, or accept it as untested |
-| Purchase untested | Expected: no real orders are placed |
-| TikTok/Snap `PARTIALLY_VERIFIED` | Confirm in the platform's Test Events view (recorded as `test_events_confirmed`) |
-| `write_refused` (exit 3) | A gate blocked the write: not approved, wrong page, wrong account, or destructive not confirmed |
-| `بيانات التحقق قديمة` | The verification observation was collected before the change. Collect again |
-| Chromium won't launch | Set `NITTAQ_CHROMIUM_PATH` to a Chromium binary |
+| كل الخدمات `DETECTED` أو `UNABLE_TO_VERIFY` | تم استخدام البديل الثابت. ثبّت Playwright وChromium، أو وفّر أداة متصفح للوكيل |
+| خطوة `begin_checkout` لم تُختبر (`customer_login`) | المتجر يطلب تسجيل دخول العميل برمز تحقق. سجّل الدخول بنفسك ثم أعد الفحص، أو اقبلها كخطوة غير مختبرة |
+| حدث الشراء لم يُختبر | متوقع: لا يتم إنشاء طلبات حقيقية |
+| TikTok أو Snap بحالة `PARTIALLY_VERIFIED` | أكّد من شاشة اختبار الأحداث في المنصة (يُسجَّل كـ `test_events_confirmed`) |
+| `write_refused` (رمز الخروج 3) | البوابة منعت التعديل: غير معتمد، أو صفحة خطأ، أو حساب خطأ، أو إجراء حساس غير مؤكد |
+| `بيانات التحقق قديمة` | بيانات التحقق جُمعت قبل التغيير. أعد جمعها |
+| Chromium لا يعمل | اضبط `NITTAQ_CHROMIUM_PATH` على مسار متصفح Chromium |
 
-## Limitations
+## القيود
 
-- Server-side events (Meta CAPI, TikTok Events API, Snap CAPI, Salla Cloud Mode) are invisible to a browser.
-  Deduplication is checked only for the browser half.
-- Purchase-only behaviour (conversion value, `transaction_id` uniqueness) needs real orders, which the skill
-  won't create.
-- Salla dashboard menu labels and some integration details are not publicly documented. They must be
-  confirmed live before any change, and the skill stops when the UI is unexpected.
-- Merchant Center re-reviews take time. Post-fix verification may legitimately end as `unable_to_verify`.
-- No claim of 100% reliability. The design goal is to fail safely, require evidence, and ask before changing
-  anything.
+- الأحداث المرسلة من الخادم (Meta CAPI وTikTok Events API وSnap CAPI ووضع Cloud Mode في سلة) لا تظهر في المتصفح، لذلك يُفحص منع التكرار من جهة المتصفح فقط.
+- سلوك الشراء (قيمة التحويل وتفرّد `transaction_id`) يحتاج طلبات حقيقية، والمهارة لا تنشئها.
+- مسميات قوائم لوحة تحكم سلة وبعض تفاصيل الربط غير موثقة علنًا، ويجب التأكد منها مباشرة قبل أي تغيير، وتتوقف المهارة عند ظهور واجهة غير متوقعة.
+- مراجعة Merchant Center تستغرق وقتًا، لذلك قد ينتهي التحقق بعد الإصلاح بنتيجة `unable_to_verify` بشكل طبيعي.
+- لا ادعاء لموثوقية 100٪. الهدف هو التوقف الآمن، واشتراط الدليل، وطلب الموافقة قبل أي تغيير.
 
-## Project layout
+## هيكل المشروع
 
 ```
 SKILL.md  README.md  CHANGELOG.md  pyproject.toml
@@ -213,5 +228,6 @@ tests/      unit/ scenarios/ integration/ fixtures/
 assets/fonts/Tajawal-Medium.ttf
 ```
 
-`validators/google_ads` uses an underscore instead of the spec's `google-ads`, because Python packages can't
-contain hyphens.
+مجلد `validators/google_ads` يستخدم الشرطة السفلية بدل `google-ads` الواردة في المواصفات، لأن أسماء حزم Python لا تقبل الشرطة.
+
+</div>
